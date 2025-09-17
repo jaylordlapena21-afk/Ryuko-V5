@@ -1,7 +1,7 @@
 module.exports.config = {
   name: "help",
   version: "3.8.0",
-  hasPermssion: 0,
+  hasPermission: 0, // Corrected from hasPermssion to hasPermission
   credits: "ChatGPT + Edited by Jaylord",
   description: "Show all available commands grouped by category with styled brackets",
   commandCategory: "system",
@@ -26,7 +26,7 @@ module.exports.run = async function ({ api, event, args }) {
     let details = `📖 HELP → /${config.name}\n\n`;
     details += `📝 Description: ${config.description || "No description"}\n`;
     if (config.usages) details += `⚡ Usage: ${config.usages}\n`;
-    details += `🔑 Permission: ${config.hasPermssion || 0}\n`;
+    details += `🔑 Permission: ${config.hasPermission || 0}\n`; // Corrected here
     details += `⏳ Cooldown: ${config.cooldowns || 0}s`;
 
     return api.sendMessage(details, threadID);
