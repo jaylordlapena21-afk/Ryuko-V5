@@ -1,52 +1,99 @@
 module.exports.config = {
-	name: "join",
-	eventType: ["log:subscribe"],
-	version: "1.0.1",
-	credits: "ryuko",
-	description: "join and welcome notification",
-	dependencies: {
-		"fs-extra": ""
-	}
+  name: "joinNoti",
+  eventType: ["log:subscribe"],
+  version: "1.2.3",
+  credits: "Kim Joseph DG Bien (updated by ChatGPT)",
+  description: "Join Notification with API-generated welcome photo",
+  dependencies: {
+    "fs-extra": "",
+    "request": ""
+  }
 };
 
-module.exports.run = async function({ api, event,Threads, botname, prefix}) {
-	const { join } = global.nodemodule["path"];
-	const { threadID } = event;
-	const data = (await Threads.getData(event.threadID)).data || {};
-    const checkban = data.banOut || []
-	const botID = await api.getCurrentUserID();
-	if  (checkban.includes(checkban[0])) return
-	else if (event.logMessageData.addedParticipants.some(i => i.userFbId == api.getCurrentUserID())) {
-        api.changeNickname(`${botname} ai`, threadID, botID);
-		return api.sendMessage(`bot connected successfully\n\nabout me?\nbot name : ${botname}\nbot prefix : ${prefix}\n\nbot data?\nusers : ${global.data.allUserID.length}\ngroups : ${global.data.allThreadID.get(botID).length}\n\nhow to use?\n${prefix}help (command list)\nai (question) - no prefix\ntalk (text) - no prefix\n\nryuko botpack v5`, threadID);
-	}
-	else {
-		try {
-			const { createReadStream, existsSync, mkdirSync } = global.nodemodule["fs-extra"];
-			let { threadName, participantIDs } = await api.getThreadInfo(threadID);
+module.exports.run = async function ({ api, event }) {
+  const request = require("request");
+  const fs = global.nodemodule["fs-extra"];
+  const path = require("path");
 
-			const threadData = global.data.threadData.get(parseInt(threadID)) || {};
+  const { threadID, logMessageData } = event;
+  const addedParticipants = logMessageData.addedParticipants;
 
-			var mentions = [], nameArray = [], memLength = [], i = 0;
-			
-			for (id in event.logMessageData.addedParticipants) {
-				const userName = event.logMessageData.addedParticipants[id].fullName;
-				nameArray.push(userName);
-				mentions.push({ tag: userName, id });
-				memLength.push(participantIDs.length - i++);
-			}
-			memLength.sort((a, b) => a - b);
-			
-			(typeof threadData.customJoin == "undefined") ? msg = "hello, {name}. welcome to {threadName}." : msg = threadData.customJoin;
-			msg = msg
-			.replace(/\{name}/g, nameArray.join(', '))
-			.replace(/\{type}/g, (memLength.length > 1) ?  'friends' : 'you')
-			.replace(/\{soThanhVien}/g, memLength.join(', '))
-			.replace(/\{threadName}/g, threadName);
+  // ✅ If bot was added
+  if (addedParticipants.some(i => i.userFbId == api.getCurrentUserID())) {
+    api.changeNickname(
+      `𝗕𝗢𝗧 ${global.config.BOTNAME} 【 ${global.config.PREFIX} 】`,
+      threadID,
+      api.getCurrentUserID()
+    );
+    return api.sendMessage(
+      `BOT CONNECTED!!\n\nThank you for using my BOT\nUse ${global.config.PREFIX}help to see other commands\n\nIf you notice an error in the bot, just report it using: ${global.config.PREFIX}callad or request a command!`,
+      threadID
+    );
+  }
 
-			let formPush = { body: msg, mentions }
+  try {
+    // ✅ Get thread info safely
+    const threadInfo = await api.getThreadInfo(threadID);
+    const threadName = threadInfo.threadName || "this group";
+    const totalMembers = threadInfo.participantIDs?.length || 0;
 
-			return api.sendMessage(formPush, threadID);
-		} catch (e) { return console.log(e) };
-	}
-}
+    for (let newParticipant of addedParticipants) {
+      const userID = newParticipant.userFbId;
+
+      // ✅ Skip kung bot mismo
+      if (userID === api.getCurrentUserID()) continue;
+
+      // ✅ Get user info safely
+      let userName = "Friend";
+      try {
+        const userInfo = await api.getUserInfo(userID);
+        if (userInfo?.[userID]?.name) {
+          userName = userInfo[userID].name;
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to get user info:", e.message);
+      }
+
+      // ✅ Build welcome message
+      const msg = `Hello ${userName}!\nWelcome to ${threadName}!\nYou're the ${totalMembers}th member in this group, please enjoy!`;
+
+      // ✅ API URL for welcome image
+      const apiUrl = `https://betadash-api-swordslush-production.up.railway.app/welcome?name=${encodeURIComponent(userName)}&userid=${userID}&threadname=${encodeURIComponent(threadName)}&members=${totalMembers}`;
+
+      // ✅ Path for cache image
+      const filePath = path.join(__dirname, "..", "commands", "cache", `welcome_${userID}.png`);
+
+      // auto-create cache folder if not exists
+      if (!fs.existsSync(path.dirname(filePath))) {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      }
+
+      // ✅ Callback after download
+      const callback = () => {
+        if (fs.existsSync(filePath)) {
+          api.sendMessage({
+            body: msg,
+            attachment: fs.createReadStream(filePath),
+            mentions: [{ tag: userName, id: userID }]
+          }, threadID, () => fs.unlinkSync(filePath));
+        } else {
+          // Fallback: send text only
+          api.sendMessage(msg, threadID);
+        }
+      };
+
+      console.log(`📥 Generating welcome for ${userName} (${userID})`);
+
+      // ✅ Request image with error handling
+      request(apiUrl)
+        .pipe(fs.createWriteStream(filePath))
+        .on("close", callback)
+        .on("error", (err) => {
+          console.error("❌ Error downloading welcome image:", err.message);
+          api.sendMessage(msg, threadID);
+        });
+    }
+  } catch (err) {
+    console.error("❌ ERROR in joinNoti module:", err);
+  }
+};
