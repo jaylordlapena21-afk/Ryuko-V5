@@ -3,12 +3,12 @@ module.exports = async ({ api, event }) => {
   
   const configCustom = {
     autosetbio: {
-      status: false,
+      status: true,
       bio: `prefix : ${global.config.PREFIX}`,
       note: 'automatically change the bot bio.'
     },
     greetings: {
-      status: true,
+      status: false,
       morning: `goodmorning everyone, have a nice day.`,
       afternoon: `goodafternoon everyone, don't forget to eat your lunch.`,
       evening: `goodevening everyone, don't forget to eat.`,
@@ -16,7 +16,7 @@ module.exports = async ({ api, event }) => {
       note: 'greetings every morning, afternoon and evening. the timezone is located in Asia/Manila'
     },
     accpetPending: {
-      status: false,
+      status: true,
       time: 10, // 10 minutes
       note: 'approve waiting messages after a certain time, set the status to false if you want to disable auto accept message request.'
     }
