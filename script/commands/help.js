@@ -1,12 +1,14 @@
 module.exports.config = {
-  name: "help",
-  version: "3.8.0",
-  hasPermission: 0, // Corrected from hasPermssion to hasPermission
-  credits: "ChatGPT + Edited by Jaylord",
-  description: "Show all available commands grouped by category with styled brackets",
-  commandCategory: "system",
-  usages: "/help [command]",
-  cooldowns: 1
+  name: "help", // Command name
+  version: "3.8.0", // Command version
+  permission: 0, // Permission level (0: all, 1: group admins, 2: bot admins, 3: bot operators)
+  credits: "ChatGPT + Edited by Jaylord", // Creator of the code
+  description: "Show all available commands grouped by category with styled brackets", // Command description
+  prefix: false, // Use prefix (true/false)
+  premium: false, // Enable premium feature (true/false)
+  category: "system", // Command category
+  usages: "/help [command]", // Command usage
+  cooldowns: 1 // Cooldown in seconds
 };
 
 module.exports.run = async function ({ api, event, args }) {
@@ -26,7 +28,7 @@ module.exports.run = async function ({ api, event, args }) {
     let details = `📖 HELP → /${config.name}\n\n`;
     details += `📝 Description: ${config.description || "No description"}\n`;
     if (config.usages) details += `⚡ Usage: ${config.usages}\n`;
-    details += `🔑 Permission: ${config.hasPermission || 0}\n`; // Corrected here
+    details += `🔑 Permission: ${config.permission || 0}\n`; // Updated to match the new structure
     details += `⏳ Cooldown: ${config.cooldowns || 0}s`;
 
     return api.sendMessage(details, threadID);
@@ -49,7 +51,7 @@ module.exports.run = async function ({ api, event, args }) {
   let categorized = {};
   commands.forEach(cmd => {
     const cfg = cmd.config;
-    let category = (cfg.commandCategory || "others").toLowerCase();
+    let category = (cfg.category || "others").toLowerCase(); // Changed field name to match structure
 
     // 🔎 Auto-detect AI-related commands
     if (
